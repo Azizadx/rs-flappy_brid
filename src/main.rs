@@ -13,6 +13,7 @@ enum GameMode {
 struct State {
     player:Player,
     frame_time: f32,
+    obstacle:Obstacle,
     mode:GameMode,
 } 
 struct Player {
@@ -20,11 +21,17 @@ struct Player {
     y:i32, // player position = screen space
     velocity: f32
 }
+struct Obstacle {
+    x: i32,
+    gap_y: i32,
+    size: i32,
+}
 impl State {
     fn new()-> Self {
         State {
             player: Player::new(5,25),
             frame_time: 0.0,
+            obstacle: Obstacle::new(SCREEN_WIDTH, 0),
             mode: GameMode::Menu 
         }
     }
@@ -58,6 +65,10 @@ impl State {
         }
         self.player.render(ctx);
         ctx.print(0, 0, "Press SPACE to flap.");
+        self.obstacle.render(ctx, self.player.x);
+       if self.player.x  > self.obstacle.x {
+            self.obstacle = Obstacle::new(self.player.x+SCREEN_WIDTH, 0);
+        }
         if self.player.y > SCREEN_HEIGHT {
             self.mode = GameMode::End;    
         }
@@ -65,6 +76,7 @@ impl State {
     fn restart(&mut self){
         self.player = Player::new(5, 25);
         self.frame_time = 0.0;
+        self.obstacle = Obstacle::new(SCREEN_WIDTH, 0);
         self.mode = GameMode::Playing;
     }
     fn dead(&mut self, ctx:&mut BTerm){
@@ -105,6 +117,34 @@ impl Player {
     fn flap(&mut self){
         self.velocity = -2.0;
     }
+}
+impl Obstacle{
+    fn new(x: i32, score: i32)-> Self {
+        let mut random = RandomNumberGenerator::new();
+        Obstacle {
+           x,
+           gap_y: random.range(10,40),
+           size: i32::max(2, 20-score)
+        }
+           
+    }
+    fn render(&mut self, ctx:&mut BTerm, x_axis: i32){
+        let screen_x = self.x - x_axis;
+        let half_size = self.size / 2;
+
+        //Draw the top half onstacle
+        for y in 0..self.gap_y - half_size {
+            ctx.set(screen_x, y, RED, BLACK, to_cp437('|'),);
+
+        }
+
+        //Draw the bottom half
+        for y in self.gap_y + half_size..SCREEN_HEIGHT {
+            ctx.set(screen_x, y, RED, BLACK, to_cp437('|'));
+        }
+
+    }
+    
 }
 impl GameState for State {
     fn tick(&mut self, ctx: &mut BTerm) {
